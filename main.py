@@ -15,7 +15,9 @@
 
 import logging
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from api.v1.upload import router as upload_router
+from api.v1.device import router as device_router
 from core.scheduler import start_scheduler, stop_scheduler
 
 # 配置日志系统
@@ -30,6 +32,15 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc"
+)
+
+# 配置CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 在生产环境中应该设置具体的域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")
@@ -52,6 +63,7 @@ async def shutdown_event():
 
 # 注册路由
 app.include_router(upload_router)
+app.include_router(device_router)
 
 # 启动服务器（仅在直接运行时）
 if __name__ == "__main__":

@@ -5,13 +5,7 @@
 1. 项目路径配置
 2. 上传目录设置
 3. 时区设置
-4. 其他全局配置参数
-
-主要功能：
-- 定义全局配置常量
-- 设置文件上传目录
-- 配置时区信息
-- 设置调试模式和文件大小限制
+4. 设备映射配置
 """
 
 from pathlib import Path
@@ -36,3 +30,10 @@ class Settings:
     TIMEZONE = timezone(timedelta(hours=8))  # 上海时区
     SCHEDULER_TIMEZONE = timezone(timedelta(hours=8))  # 调度器使用上海时区
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+
+    # 设备映射配置
+    DEVICE_MAPPING = {
+        "deviceA": "XPL5T19A28003051",
+        "deviceB": "EFGH5678",
+        "deviceC": "IJKL9012"
+    }
