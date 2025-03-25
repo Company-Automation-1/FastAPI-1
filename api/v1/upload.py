@@ -13,7 +13,7 @@
 """
 
 from fastapi import APIRouter, HTTPException, status
-from core.tasks import device_upload_task
+from core.tasks import immediate_task, scheduled_task
 from models.request import UploadRequest
 from services.upload_service import process_upload
 from core.scheduler import add_job
@@ -26,69 +26,55 @@ router = APIRouter(prefix="/api/v1/upload", tags=["Device Upload"])
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def upload_endpoint(request: UploadRequest):
     """
-    设备数据上传的主接口
-
-    处理流程：
-    1. 接收并验证上传请求
-    2. 处理文件上传
-    3. 创建后续处理的定时任务
-
-    Args:
-        request (UploadRequest): 包含设备名称、时间戳、文件等信息的请求对象
-
-    Returns:
-        dict: 上传处理的结果信息
-
-    Raises:
-        HTTPException: 当上传处理或任务调度失败时抛出
+    设备上传数据接口
+    1. 处理文件上传请求
+    2. 执行立即任务
+    3. 创建定时任务
     """
     # 处理上传
     response_data = await handle_upload(request)
     
+    # 执行立即任务
+    await execute_immediate_task(request)
+    
     # 创建定时任务
     await create_scheduled_task(request)
+    
     return response_data
 
 async def handle_upload(request: UploadRequest) -> dict:
-    """
-    处理文件上传请求
-
-    Args:
-        request (UploadRequest): 上传请求对象
-
-    Returns:
-        dict: 包含上传结果的响应数据
-
-    Raises:
-        HTTPException: 当上传处理失败时抛出500错误
-    """
+    """处理文件上传请求"""
     try:
         return await process_upload(request)
     except Exception as e:
         logger.error("Upload failed: %s", str(e))
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Upload failed")
 
-async def create_scheduled_task(request: UploadRequest):
-    """
-    创建数据处理的定时任务
-
-    Args:
-        request (UploadRequest): 包含任务相关信息的请求对象
-
-    Raises:
-        HTTPException: 当任务调度失败时抛出503错误
-    """
+async def execute_immediate_task(request: UploadRequest):
+    """执行立即任务"""
     try:
+        await immediate_task(
+            device_name=request.device_name,
+            upload_time=request.timestamp
+        )
+    except Exception as e:
+        logger.error("Immediate task failed: %s", str(e))
+        # 这里我们不抛出异常，因为这是次要任务，不应影响上传响应
+        
+async def create_scheduled_task(request: UploadRequest):
+    """创建定时任务"""
+    try:
+        # 使用上海时区
         shanghai_tz = timezone(timedelta(hours=8))
         trigger_time = datetime.fromtimestamp(request.timestamp, tz=timezone.utc)
         trigger_time_shanghai = trigger_time.astimezone(shanghai_tz)
         
         add_job(
-            device_upload_task,
+            scheduled_task,  # 使用新的定时任务函数
             trigger_time_shanghai,
             device_name=request.device_name,
             task_time=request.timestamp
         )
     except Exception as e:
         logger.error("Task scheduling failed: %s", str(e))
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Scheduling failed")
+        # 这里我们不抛出异常，因为这是次要任务，不应影响上传响应

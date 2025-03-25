@@ -148,7 +148,7 @@ def create_response(request: UploadRequest, files_count: int) -> dict:
     """
     return {
         "code": 1,
-        "status": "success",
+        "msg": "success",
         "device_name": request.device_name,
         "timestamp": request.timestamp,
         "files_count": files_count,

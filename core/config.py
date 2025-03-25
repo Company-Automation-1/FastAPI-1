@@ -31,9 +31,19 @@ class Settings:
     SCHEDULER_TIMEZONE = timezone(timedelta(hours=8))  # 调度器使用上海时区
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
+    # ADB配置
+    ADB_PATH = "adb"  # 使用系统路径中的ADB，也可以设置为绝对路径
+
     # 设备映射配置
     DEVICE_MAPPING = {
         "deviceA": "XPL5T19A28003051",
         "deviceB": "EFGH5678",
         "deviceC": "IJKL9012"
+    }
+
+    # 各设备的文件存储路径
+    DEVICE_PATHS = {
+    "XPL5T19A28003051": "/storage/emulated/0/Pictures/",  # Android设备图片目录
+    "EFGH5678": "/storage/emulated/0/Pictures",
+    "IJKL9012": "/storage/emulated/0/Pictures"
     }

@@ -41,3 +41,35 @@ async def device_upload_task(device_name: str, task_time: int):
         # 4. 调用第三方API
     except Exception as e:
         logger.error(f"Task execution failed: {str(e)}")
+
+async def immediate_task(device_name: str, upload_time: int):
+    """
+    上传后立即执行的任务
+
+    Args:
+        device_name: 设备名称
+        upload_time: 上传时间戳
+    """
+    try:
+        logger.info(f"执行立即任务 - 设备: {device_name}, 上传时间: {datetime.fromtimestamp(upload_time)}")
+        # TODO: 在这里添加立即执行的具体任务
+        print(f"立即任务执行中... 设备: {device_name}")
+        
+    except Exception as e:
+        logger.error(f"立即任务执行失败: {str(e)}")
+
+async def scheduled_task(device_name: str, task_time: int):
+    """
+    定时执行的任务
+
+    Args:
+        device_name: 设备名称
+        task_time: 计划执行的时间戳
+    """
+    try:
+        logger.info(f"执行定时任务 - 设备: {device_name}, 计划时间: {datetime.fromtimestamp(task_time)}")
+        # TODO: 在这里添加定时执行的具体任务
+        print(f"定时任务执行中... 设备: {device_name}")
+        
+    except Exception as e:
+        logger.error(f"定时任务执行失败: {str(e)}")
