@@ -10,6 +10,7 @@
 
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+import os
 
 # 项目路径配置
 PROJECT_DIR = Path(__file__).parent.parent
@@ -32,7 +33,9 @@ class Settings:
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
     # ADB配置
-    ADB_PATH = "adb"  # 使用系统路径中的ADB，也可以设置为绝对路径
+    ADB_PATH = "adb"  # 如果 adb 在系统 PATH 中
+    # 或者使用绝对路径
+    # ADB_PATH = r"E:\Program Files (x86)\adb\adb.exe"  # Windows 示例
 
     # 设备映射配置
     DEVICE_MAPPING = {

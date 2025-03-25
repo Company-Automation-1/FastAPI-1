@@ -13,7 +13,7 @@
 """
 
 from fastapi import APIRouter, HTTPException, status
-from core.tasks import immediate_task, scheduled_task
+from core.tasks import execute_immediate_tasks, execute_scheduled_tasks
 from models.request import UploadRequest
 from services.upload_service import process_upload
 from core.scheduler import add_job
@@ -53,7 +53,7 @@ async def handle_upload(request: UploadRequest) -> dict:
 async def execute_immediate_task(request: UploadRequest):
     """执行立即任务"""
     try:
-        await immediate_task(
+        await execute_immediate_tasks(
             device_name=request.device_name,
             upload_time=request.timestamp
         )
@@ -70,7 +70,7 @@ async def create_scheduled_task(request: UploadRequest):
         trigger_time_shanghai = trigger_time.astimezone(shanghai_tz)
         
         add_job(
-            scheduled_task,  # 使用新的定时任务函数
+            execute_scheduled_tasks,
             trigger_time_shanghai,
             device_name=request.device_name,
             task_time=request.timestamp
