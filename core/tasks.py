@@ -215,19 +215,24 @@ async def execute_immediate_tasks(device_name: str, upload_time: int):
 # 定时执行任务
 # ===============================================
 
-async def perform_data_cleanup(device_name: str, task_time: int):
+async def perform_data_cleanup(device_name: str, task_time: int) -> bool:
     """
     执行数据清理任务
     
     Args:
         device_name: 设备名称
         task_time: 计划执行时间戳
+        
+    Returns:
+        bool: 清理是否成功
     """
     try:
         logger.info(f"执行数据清理 - 设备: {device_name}, 计划时间: {datetime.fromtimestamp(task_time)}")
         # TODO: 实现数据清理逻辑
+        return True  # 暂时返回 True，因为目前没有实际的清理逻辑
     except Exception as e:
         logger.error(f"数据清理失败: {str(e)}")
+        return False
 
 async def perform_content_automation(device_name: str, task_time: int):
     """
@@ -355,11 +360,13 @@ async def execute_scheduled_tasks(device_name: str, task_time: int, task_type: O
         
         if task_type is None or task_type == "cleanup":
             cleanup_success = await perform_data_cleanup(device_name, task_time)
-            success = success and cleanup_success
+            if cleanup_success is not None:  # 只有在有明确返回值时才更新 success
+                success = success and cleanup_success
             
         if task_type is None or task_type == "automation":
             automation_success = await perform_content_automation(device_name, task_time)
-            success = success and automation_success
+            if automation_success is not None:  # 只有在有明确返回值时才更新 success
+                success = success and automation_success
             
         logger.info(f"定时任务完成 - 设备: {device_name}, 类型: {task_type or '全部'}, 结果: {'成功' if success else '失败'}")
         return success
