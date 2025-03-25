@@ -6,12 +6,13 @@ authors = [
     {name = "xlj-hly",email = "3532818356@qq.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "fastapi[standard] (>=0.115.11,<0.116.0)",
     "uvicorn[standard] (>=0.34.0,<0.35.0)",
     "aiofiles (>=24.1.0,<25.0.0)",
     "apscheduler (>=3.11.0,<4.0.0)",
+    "uiautomator2 (>=3.2.9,<4.0.0)",
 ]
 
 

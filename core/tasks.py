@@ -21,6 +21,7 @@ from typing import Dict, Any, Callable, Coroutine, Optional, List
 
 from core.adb import adb, ADBException
 from core.config import Settings, UPLOAD_DIR
+from core.automation import AndroidAutomation
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ async def send_images_to_device(device_name: str, upload_time: int):
         
         # 获取设备映射信息用于诊断
         logger.info(f"设备映射配置: {Settings.DEVICE_MAPPING}")
-        logger.info(f"设备存储路径配置: {Settings.DEVICE_PATHS}")
+        logger.info(f"设备配置: {Settings.DEVICE_CONFIG[device_name]}")
         
         # 1. 检查设备连接状态
         logger.info(f"正在检查设备 {device_name} 的连接状态...")
@@ -74,15 +75,9 @@ async def send_images_to_device(device_name: str, upload_time: int):
             logger.error(f"检查设备连接状态时出错: {str(e)}")
             return False
         
-        # 2. 获取设备ID和目标存储路径
-        device_id = adb._get_device_id(device_name)
-        
-        # 从配置获取设备存储根路径
-        if device_id not in Settings.DEVICE_PATHS:
-            logger.error(f"设备ID {device_id} 的存储路径未配置")
-            return False
-            
-        device_storage_path = Settings.DEVICE_PATHS[device_id]
+        # 2. 获取设备配置和存储路径
+        device_config = Settings.DEVICE_CONFIG[device_name]
+        device_storage_path = device_config['storage_path']
         logger.info(f"设备 {device_name} 的存储路径: {device_storage_path}")
         
         # 3. 创建格式化的时间子目录
@@ -163,13 +158,18 @@ async def send_upload_notification(device_name: str, upload_time: int, success: 
             logger.warning(f"设备 {device_name} 未连接，无法发送通知")
             return
         
-        device_id = adb._get_device_id(device_name)    
-        # 发送一个简单的通知到设备
-        time_str = datetime.fromtimestamp(upload_time).strftime("%Y-%m-%d %H:%M:%S")
-        status = "成功" if success else "失败"
+        # 获取设备配置
+        device_config = Settings.DEVICE_CONFIG[device_name]
+        device_id = adb._get_device_id(device_name)
+        
+        # 使用设备配置中的存储路径
+        storage_path = device_config['storage_path']
+        time_dir = datetime.fromtimestamp(upload_time).strftime("%Y%m%d%H%M%S")
+        scan_path = f"{storage_path.rstrip('/')}/{time_dir}"
+        
         notification_cmd = [
             "shell", 
-            f"am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///storage/emulated/0/Pictures"
+            f"am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file://{scan_path}"
         ]
         
         logger.info(f"执行通知命令: adb -s {device_id} {' '.join(notification_cmd)}")
@@ -229,26 +229,141 @@ async def perform_data_cleanup(device_name: str, task_time: int):
     except Exception as e:
         logger.error(f"数据清理失败: {str(e)}")
 
+async def perform_content_automation(device_name: str, task_time: int):
+    """
+    执行内容自动化发布任务
+    
+    Args:
+        device_name: 设备名称
+        task_time: 计划执行时间戳
+    """
+    try:
+        logger.info(f"开始执行内容自动化任务 - 设备: {device_name}")
+        
+        # 检查设备配置
+        if device_name not in Settings.DEVICE_CONFIG:
+            logger.error(f"设备 {device_name} 配置不存在")
+            return False
+            
+        # 获取要发布的内容
+        title, content = await get_content_from_file(device_name, task_time)
+        logger.info(f"准备发布内容 - 标题: {title if title else '[无标题]'}, 正文长度: {len(content) if content else 0}")
+            
+        # 初始化自动化实例
+        automation = AndroidAutomation(device_name)
+        
+        # 连接设备
+        if not automation.connect_device():
+            logger.error(f"设备 {device_name} 连接失败")
+            return False
+            
+        # 构建图片路径
+        time_dir = datetime.fromtimestamp(task_time).strftime("%Y%m%d%H%M%S")
+        local_dir = UPLOAD_DIR / device_name / time_dir / "imgs"
+        
+        # 检查目录是否存在
+        if not local_dir.exists():
+            logger.error(f"图片目录不存在: {local_dir}")
+            return False
+            
+        image_paths = [str(p) for p in local_dir.glob("*.*")]
+        
+        if not image_paths:
+            logger.error(f"未找到需要发布的图片: {local_dir}")
+            return False
+            
+        # 执行发布操作
+        success, status = automation.post_content(title, content, image_paths)
+        
+        if success:
+            logger.info(f"内容发布成功 - 设备: {device_name}")
+        else:
+            logger.error(f"内容发布失败 - 设备: {device_name}, 状态: {status}")
+            
+        return success
+        
+    except Exception as e:
+        logger.error(f"执行内容自动化任务失败: {str(e)}", exc_info=True)
+        return False
+
+async def get_content_from_file(device_name: str, task_time: int) -> tuple[Optional[str], Optional[str]]:
+    """
+    从上传目录中获取内容文件并解析标题和内容
+    
+    Args:
+        device_name: 设备名称
+        task_time: 任务时间戳
+        
+    Returns:
+        tuple: (标题, 正文内容)
+    """
+    try:
+        time_dir = datetime.fromtimestamp(task_time).strftime("%Y%m%d%H%M%S")
+        content_dir = UPLOAD_DIR / device_name / time_dir
+        
+        # 读取content.txt文件
+        content_file = content_dir / "content.txt"
+        if not content_file.exists():
+            logger.warning(f"内容文件不存在: {content_file}")
+            return None, None
+            
+        # 读取文件内容
+        file_content = content_file.read_text(encoding='utf-8').strip()
+        
+        # 解析标题和内容
+        title = None
+        content = None
+        
+        # 按行分割
+        lines = file_content.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Title:'):
+                title = line.replace('Title:', '').strip()
+            elif line.startswith('Content:'):
+                # 获取Content:后面的所有内容
+                content_start = file_content.index('Content:') + 8
+                content = file_content[content_start:].strip()
+                break
+        
+        logger.debug(f"解析到标题: {title}")
+        logger.debug(f"解析到正文，长度: {len(content) if content else 0}")
+        
+        return title, content
+        
+    except Exception as e:
+        logger.error(f"读取或解析内容文件失败: {str(e)}")
+        return None, None
+
 # 定时任务调度器
 async def execute_scheduled_tasks(device_name: str, task_time: int, task_type: Optional[str] = None):
     """
     执行定时任务的调度器
     
-    集中调度所有计划执行的任务，可根据task_type选择执行特定类型的任务。
-    
     Args:
         device_name: 设备名称
         task_time: 计划执行的时间戳
         task_type: 可选的任务类型，为None时执行所有定时任务
+        
+    Returns:
+        bool: 任务执行是否成功
     """
     logger.info(f"开始执行定时任务 - 设备: {device_name}, 类型: {task_type or '全部'}")
     
     try:
-        if task_type is None or task_type == "cleanup":
-            await perform_data_cleanup(device_name, task_time)
-            
-        # 可在此处添加更多定时任务类型
+        success = True
         
-        logger.info(f"定时任务完成 - 设备: {device_name}, 类型: {task_type or '全部'}")
+        if task_type is None or task_type == "cleanup":
+            cleanup_success = await perform_data_cleanup(device_name, task_time)
+            success = success and cleanup_success
+            
+        if task_type is None or task_type == "automation":
+            automation_success = await perform_content_automation(device_name, task_time)
+            success = success and automation_success
+            
+        logger.info(f"定时任务完成 - 设备: {device_name}, 类型: {task_type or '全部'}, 结果: {'成功' if success else '失败'}")
+        return success
+        
     except Exception as e:
         logger.error(f"定时任务执行过程中出现未处理异常: {str(e)}")
+        return False

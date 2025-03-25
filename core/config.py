@@ -38,15 +38,44 @@ class Settings:
     # ADB_PATH = r"E:\Program Files (x86)\adb\adb.exe"  # Windows 示例
 
     # 设备映射配置
+    # 设备映射配置
     DEVICE_MAPPING = {
         "deviceA": "XPL5T19A28003051",
-        "deviceB": "EFGH5678",
+        "deviceA_sys2": "XPL5T19A28003051",  # 同一设备的第二个系统
+        "deviceB": "r8yhge69x8u8lzv8",
         "deviceC": "IJKL9012"
     }
 
-    # 各设备的文件存储路径
-    DEVICE_PATHS = {
-    "XPL5T19A28003051": "/storage/emulated/0/Pictures/",  # Android设备图片目录
-    "EFGH5678": "/storage/emulated/0/Pictures",
-    "IJKL9012": "/storage/emulated/0/Pictures"
+    # 设备配置详情
+    DEVICE_CONFIG = {
+        "deviceA": {
+            "storage_path": "/storage/emulated/0/Pictures/",
+            "lock_password": "000000",
+            "app_package": "com.xingin.xhs",
+            "wait_timeout": 10
+        },
+        "deviceA_sys2": {  # 同一设备的第二个系统配置
+            "storage_path": "/storage/emulated/0/Pictures/",
+            "lock_password": "123456",
+            "app_package": "com.xingin.xhs",
+            "wait_timeout": 10
+        },
+        "deviceB": {
+            "storage_path": "/storage/emulated/0/DCIM/Camera/",
+            "lock_password": "666666",
+            "app_package": "com.xingin.xhs",
+            "wait_timeout": 10
+        },
+        "deviceC": {
+            "storage_path": "/storage/emulated/0/Pictures",
+            "lock_password": "888888",
+            "app_package": "com.xingin.xhs",
+            "wait_timeout": 10
+        }
     }
+
+    # 基础自动化配置（默认值）
+    AUTOMATION_CONFIG = {
+        'APP_PACKAGE': 'com.xingin.xhs',
+        'WAIT_TIMEOUT': 10
+    } 
